@@ -18,7 +18,7 @@
     <packaging>jar</packaging>
 
     <name>Spring Reactive Mongo Filter</name>
-    <description>Reusable reactive filtering, sorting, and pagination for MongoDB-based Spring WebFlux microservices</description>
+    <description>A Spring Boot library that provides reusable filtering, sorting, and pagination for Spring WebFlux + Reactive MongoDB</description>
     <url>https://github.com/magicthings/spring-reactive-mongo-filter</url>
 
     <licenses>
