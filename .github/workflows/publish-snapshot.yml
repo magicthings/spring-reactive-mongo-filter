@@ -1,0 +1,83 @@
+name: Publish SNAPSHOT
+
+on:
+  push:
+    branches:
+      - dev
+
+concurrency:
+  group: publish-snapshot-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Configure Maven settings
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << 'EOF'
+          <settings>
+            <servers>
+              <server>
+                <id>github-magicthings</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+              <server>
+                <id>github-magicthings-entity-library</id>
+                <username>${env.GITHUB_ACTOR}</username>
+                <password>${env.GITHUB_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+
+      - name: Determine SNAPSHOT version
+        id: version
+        run: |
+          BASE_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          BASE_VERSION="${BASE_VERSION%-SNAPSHOT}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "VERSION=${BASE_VERSION}-SNAPSHOT.${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Set version in pom.xml
+        run: |
+          ./mvnw versions:set -DnewVersion="${VERSION}"
+          ./mvnw versions:commit
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Build and Test
+        run: ./mvnw clean verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+
+      - name: Publish to GitHub Packages
+        run: ./mvnw deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Published SNAPSHOT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **GroupId:** de.magicthings" >> $GITHUB_STEP_SUMMARY
+          echo "- **ArtifactId:** spring-reactive-mongo-filter" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
