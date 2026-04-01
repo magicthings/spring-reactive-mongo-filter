@@ -29,7 +29,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>de.magicthings</groupId>
     <artifactId>spring-reactive-mongo-filter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>latest</version>
 </dependency>
 ```
 
