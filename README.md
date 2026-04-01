@@ -1,5 +1,7 @@
 # Spring Reactive Mongo Filter
 
+[![Maven Central](https://img.shields.io/maven-central/v/de.magicthings/spring-reactive-mongo-filter)](https://central.sonatype.com/artifact/de.magicthings/spring-reactive-mongo-filter)
+
 Reusable filtering, sorting, and pagination for Spring WebFlux microservices with reactive MongoDB.
 
 No existing library covers **WebFlux + Reactive MongoDB + REST query parameter filtering** together. This library fills that gap with a clean, annotation-driven API.
@@ -29,7 +31,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
     <groupId>de.magicthings</groupId>
     <artifactId>spring-reactive-mongo-filter</artifactId>
-    <version>latest</version>
+    <version><!-- latest version, see badge above --></version>
 </dependency>
 ```
 
