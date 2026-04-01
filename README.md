@@ -1,12 +1,31 @@
 # Spring Reactive Mongo Filter
 
 [![Maven Central](https://img.shields.io/maven-central/v/de.magicthings/spring-reactive-mongo-filter)](https://central.sonatype.com/artifact/de.magicthings/spring-reactive-mongo-filter)
+[![Javadoc](https://javadoc.io/badge2/de.magicthings/spring-reactive-mongo-filter/javadoc.svg)](https://javadoc.io/doc/de.magicthings/spring-reactive-mongo-filter)
 [![Java 21+](https://img.shields.io/badge/Java-21%2B-blue)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot 4.x](https://img.shields.io/badge/Spring%20Boot-4.x-green)](https://spring.io/projects/spring-boot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Reusable filtering, sorting, and pagination for Spring WebFlux microservices with reactive MongoDB.
+Annotation-driven filtering, sorting, and pagination for **Spring WebFlux** + **Reactive MongoDB**.
 
-No existing library covers **WebFlux + Reactive MongoDB + REST query parameter filtering** together. This library fills that gap with a clean, annotation-driven API.
+No existing library covers WebFlux + Reactive MongoDB + REST query parameter filtering together. This library fills that gap with a clean, annotation-driven API.
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Compatibility](#compatibility)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Query Parameters](#query-parameters)
+- [API Reference](#api-reference)
+- [Advanced Configuration](#advanced-configuration)
+- [Error Handling](#error-handling)
+- [Security](#security)
+- [Building from Source](#building-from-source)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Features
 
@@ -15,19 +34,18 @@ No existing library covers **WebFlux + Reactive MongoDB + REST query parameter f
 - **Pagination** with configurable max page size
 - **Field whitelisting** per entity via `EntityFilterSpec`
 - **`@Filtered` annotation** for zero-boilerplate controller integration
-- **Spring Boot auto-configuration** — no component scan required
-- **Injection-safe** — field whitelist, operator whitelist, type conversion, regex escaping
+- **Spring Boot auto-configuration** -- no `@ComponentScan` or `@Import` required
+- **Injection-safe** -- field whitelist, operator whitelist, type conversion, regex escaping
 
-## Requirements
+## Compatibility
 
-- Java 21+
-- Spring Boot 4.x
-- Spring WebFlux
-- Spring Data MongoDB Reactive
+| Library Version | Java | Spring Boot | Spring Data MongoDB Reactive |
+|-----------------|------|-------------|------------------------------|
+| 1.0.x           | 21+  | 4.x         | 5.x                         |
 
-## Installation
+## Getting Started
 
-Add the dependency to your `pom.xml`:
+### Maven
 
 ```xml
 <dependency>
@@ -37,11 +55,23 @@ Add the dependency to your `pom.xml`:
 </dependency>
 ```
 
-The library auto-configures all beans when `ReactiveMongoTemplate` is on the classpath. No `@ComponentScan` or `@Import` needed.
+### Gradle (Kotlin DSL)
 
-## Quick Start
+```kotlin
+implementation("de.magicthings:spring-reactive-mongo-filter:1.0.0")
+```
 
-### 1. Define a filter spec for your entity
+### Gradle (Groovy DSL)
+
+```groovy
+implementation 'de.magicthings:spring-reactive-mongo-filter:1.0.0'
+```
+
+All required beans are auto-configured when `ReactiveMongoTemplate` is on the classpath. No additional setup needed.
+
+## Usage
+
+### 1. Define a filter spec
 
 Create a `@Component` that implements `EntityFilterSpec<T>` to declare which fields are filterable and sortable:
 
@@ -75,20 +105,27 @@ public class ProductFilterSpec implements EntityFilterSpec<Product> {
 }
 ```
 
-### 2. Use `@Filtered` in your controller
+### 2. Annotate your controller
 
-Annotate a `FilterRequest` parameter with `@Filtered` — Spring resolves it automatically from query parameters:
+Use `@Filtered` to resolve a `FilterRequest` from query parameters automatically:
 
 ```java
-@GetMapping
-public Mono<ResponseEntity<Page<ProductDTO>>> getAll(
-        @Filtered(ProductFilterSpec.class) FilterRequest filterRequest) {
-    return productService.findAll(filterRequest)
-            .map(ResponseEntity::ok);
+@RestController
+@RequestMapping("/api/products")
+@RequiredArgsConstructor
+public class ProductController {
+
+    private final ProductService productService;
+
+    @GetMapping
+    public Mono<FilteredPage<Product>> getAll(
+            @Filtered(ProductFilterSpec.class) FilterRequest filterRequest) {
+        return productService.findAll(filterRequest);
+    }
 }
 ```
 
-### 3. Execute the filtered query in your service
+### 3. Execute the filtered query
 
 ```java
 @Service
@@ -98,17 +135,21 @@ public class ProductService {
     private final ReactiveFilterRepository filterRepository;
     private final ProductFilterSpec filterSpec;
 
-    public Mono<Page<ProductDTO>> findAll(FilterRequest filterRequest) {
-        return filterRepository
-                .findFiltered(filterRequest, filterSpec, Product.class)
-                .map(page -> /* map FilteredPage<Product> to your response DTO */);
+    public Mono<FilteredPage<Product>> findAll(FilterRequest filterRequest) {
+        return filterRepository.findFiltered(filterRequest, filterSpec, Product.class);
     }
 }
 ```
 
-That's it. No parser setup, no criteria building, no pagination math.
+That's it -- no parser setup, no criteria building, no pagination math.
 
-## Query Parameter Reference
+**Example request:**
+
+```
+GET /api/products?filter[active][eq]=true&filter[price][lte]=50&sort=created,desc&page=0&size=10
+```
+
+## Query Parameters
 
 ### Filtering
 
@@ -120,24 +161,24 @@ GET /api/products?filter[created][gte]=2025-01-01T00:00:00
 GET /api/products?filter[category][in]=electronics,books,toys
 ```
 
-Filters can be combined (AND logic):
+Multiple filters are combined with AND logic:
 
 ```
 GET /api/products?filter[active][eq]=true&filter[price][lte]=100
 ```
 
-### Supported Operators
+### Operators
 
-| Operator | Description              | Supported Types              |
-|----------|--------------------------|------------------------------|
-| `eq`     | Equals                   | String, Boolean, DateTime, Integer, Long |
-| `neq`    | Not equals               | String, Integer, Long        |
-| `like`   | Contains (case-insensitive) | String                    |
-| `gt`     | Greater than             | DateTime, Integer, Long      |
-| `lt`     | Less than                | DateTime, Integer, Long      |
-| `gte`    | Greater than or equal    | DateTime, Integer, Long      |
-| `lte`    | Less than or equal       | DateTime, Integer, Long      |
-| `in`     | In list (comma-separated)| String, Integer, Long        |
+| Operator | Description                 | Supported Types                          |
+|----------|-----------------------------|------------------------------------------|
+| `eq`     | Equals                      | String, Boolean, DateTime, Integer, Long |
+| `neq`    | Not equals                  | String, Integer, Long                    |
+| `like`   | Contains (case-insensitive) | String                                   |
+| `gt`     | Greater than                | DateTime, Integer, Long                  |
+| `lt`     | Less than                   | DateTime, Integer, Long                  |
+| `gte`    | Greater than or equal       | DateTime, Integer, Long                  |
+| `lte`    | Less than or equal          | DateTime, Integer, Long                  |
+| `in`     | In list (comma-separated)   | String, Integer, Long                    |
 
 ### Sorting
 
@@ -146,54 +187,50 @@ GET /api/products?sort=price,asc
 GET /api/products?sort=price,asc&sort=created,desc
 ```
 
-Default direction is `asc`. Multi-sort is supported by repeating the `sort` parameter.
+Default direction is `asc`. Multi-sort is supported by repeating the `sort` parameter. When no `sort` parameter is provided, the default sort from `EntityFilterSpec.getDefaultSort()` is applied (`created DESC`).
 
 ### Pagination
 
-| Parameter | Default | Description          |
-|-----------|---------|----------------------|
-| `page`    | `0`     | Page number (0-indexed) |
-| `size`    | `20`    | Page size (max 100)  |
-
-```
-GET /api/products?page=2&size=10
-```
-
-### Full Example
-
-```
-GET /api/products?filter[active][eq]=true&filter[price][lte]=50&sort=created,desc&page=0&size=10
-```
+| Parameter | Default | Max   | Description             |
+|-----------|---------|-------|-------------------------|
+| `page`    | `0`     | --    | Page number (0-indexed) |
+| `size`    | `20`    | `100` | Items per page          |
 
 ## API Reference
 
+Full Javadoc is available at [javadoc.io](https://javadoc.io/doc/de.magicthings/spring-reactive-mongo-filter).
+
 ### `EntityFilterSpec<T>`
 
-Interface to implement per entity. Defines the whitelist of filterable/sortable fields.
+Interface to implement per entity. Defines the whitelist of filterable and sortable fields.
 
-| Method                  | Description                                  | Default                     |
-|-------------------------|----------------------------------------------|-----------------------------|
-| `getFilterableFields()` | Returns allowed filter fields and their types | *(required)*                |
-| `getSortableFields()`   | Returns allowed sort fields (param -> mongo field) | *(required)*           |
-| `getDefaultSort()`      | Sort applied when no `sort` param is given   | `created DESC`              |
-| `getBaseCriteria()`     | Criteria added to every query (e.g. soft delete) | `deleted: false`        |
+| Method                  | Description                                           | Default          |
+|-------------------------|-------------------------------------------------------|------------------|
+| `getFilterableFields()` | Returns allowed filter fields and their types         | *(required)*     |
+| `getSortableFields()`   | Returns allowed sort fields (`param` -> `mongoField`) | *(required)*     |
+| `getDefaultSort()`      | Sort applied when no `sort` param is given            | `created DESC`   |
+| `getBaseCriteria()`     | Criteria added to every query (e.g. soft-delete)      | `deleted: false` |
 
 ### `FilterableField`
 
-Defines a single filterable field with its type and allowed operators.
+Defines a filterable field with its type and allowed operators. Factory methods accept either a single `name` (used as both query parameter and MongoDB field) or a pair `(paramName, documentField)` when they differ.
 
-```java
-FilterableField.string("name")                     // eq, neq, like, in
-FilterableField.string("name", "displayName")       // param name differs from mongo field
-FilterableField.bool("active")                      // eq only
-FilterableField.dateTime("created")                 // eq, gt, lt, gte, lte
-FilterableField.integer("quantity")                  // eq, neq, gt, lt, gte, lte, in
-FilterableField.longType("viewCount")               // eq, neq, gt, lt, gte, lte, in
-```
+| Factory Method                           | Operators                                     |
+|------------------------------------------|-----------------------------------------------|
+| `FilterableField.string(name)`           | `eq`, `neq`, `like`, `in`                     |
+| `FilterableField.string(param, field)`   | `eq`, `neq`, `like`, `in`                     |
+| `FilterableField.bool(name)`             | `eq`                                           |
+| `FilterableField.bool(param, field)`     | `eq`                                           |
+| `FilterableField.dateTime(name)`         | `eq`, `gt`, `lt`, `gte`, `lte`                |
+| `FilterableField.dateTime(param, field)` | `eq`, `gt`, `lt`, `gte`, `lte`                |
+| `FilterableField.integer(name)`          | `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`   |
+| `FilterableField.longType(name)`         | `eq`, `neq`, `gt`, `lt`, `gte`, `lte`, `in`   |
+
+> **Note:** `integer` and `longType` only support the single-name variant. Use the `FilterableField` constructor directly if you need a different parameter-to-field mapping for these types.
 
 ### `FilteredPage<T>`
 
-Returned by `ReactiveFilterRepository.findFiltered()`. A simple record containing the query results:
+Record returned by `ReactiveFilterRepository.findFiltered()`:
 
 ```java
 public record FilteredPage<T>(
@@ -205,22 +242,27 @@ public record FilteredPage<T>(
 )
 ```
 
-Helper methods: `isFirst()`, `isLast()`, `hasNext()`, `hasPrevious()`.
+| Method          | Description                      |
+|-----------------|----------------------------------|
+| `isFirst()`     | `true` if this is the first page |
+| `isLast()`      | `true` if this is the last page  |
+| `hasNext()`     | `true` if a next page exists     |
+| `hasPrevious()` | `true` if a previous page exists |
 
 ### `ReactiveFilterRepository`
 
-The main query execution component. Injected automatically via auto-configuration.
+Main query execution component. Auto-configured as a Spring bean.
 
 ```java
 public <T> Mono<FilteredPage<T>> findFiltered(
     FilterRequest filterRequest,
     EntityFilterSpec<T> spec,
     Class<T> entityClass,
-    Criteria... additional    // optional extra criteria
+    Criteria... additional
 )
 ```
 
-The `additional` varargs allows programmatic constraints on top of the user's filters. Example: restricting results to a subset of IDs (e.g. for multi-tenancy):
+The `additional` varargs allows adding programmatic constraints on top of the user's filters (e.g. for multi-tenancy):
 
 ```java
 filterRepository.findFiltered(
@@ -231,28 +273,28 @@ filterRepository.findFiltered(
 
 ### `@Filtered`
 
-Annotation for controller method parameters. Automatically resolves a `FilterRequest` from query parameters using the specified `EntityFilterSpec`:
+Parameter annotation for WebFlux controller methods. Automatically resolves a `FilterRequest` from query parameters using the specified `EntityFilterSpec`. The referenced spec class must be a Spring-managed bean (`@Component`).
 
 ```java
 @GetMapping
-public Mono<ResponseEntity<...>> list(
-        @Filtered(MyEntityFilterSpec.class) FilterRequest filterRequest) {
-    // filterRequest is parsed and validated
+public Mono<FilteredPage<Product>> list(
+        @Filtered(ProductFilterSpec.class) FilterRequest filterRequest) {
+    // filterRequest is fully parsed and validated
 }
 ```
 
-## Advanced Usage
+## Advanced Configuration
 
 ### Custom MongoDB field names
 
 When the query parameter name differs from the MongoDB document field:
 
 ```java
-FilterableField.string("name", "displayName")     // ?filter[name][eq]=... queries "displayName"
+FilterableField.string("name", "displayName")       // ?filter[name][eq]=... queries "displayName"
 FilterableField.dateTime("modified", "lastModified")
 ```
 
-### Disabling soft-delete filter
+### Disabling the soft-delete filter
 
 By default, `deleted: false` is added to every query. Override `getBaseCriteria()` to change or disable this:
 
@@ -263,18 +305,18 @@ public List<Criteria> getBaseCriteria() {
 }
 ```
 
-Or use a different field:
+### Custom default sort
 
 ```java
 @Override
-public List<Criteria> getBaseCriteria() {
-    return List.of(Criteria.where("active").is(true));
+public List<SortCriteria> getDefaultSort() {
+    return List.of(new SortCriteria("name", Sort.Direction.ASC));
 }
 ```
 
-### Overriding default beans
+### Overriding auto-configured beans
 
-All beans are registered with `@ConditionalOnMissingBean`. To customize behavior, define your own bean:
+All beans are registered with `@ConditionalOnMissingBean`. Define your own to customize behavior:
 
 ```java
 @Bean
@@ -287,46 +329,54 @@ public FilterRequestParser filterRequestParser() {
 
 Invalid filter requests throw `IllegalArgumentException` with descriptive messages:
 
-| Error                        | Example Message                                                          |
-|------------------------------|--------------------------------------------------------------------------|
-| Unknown filter field         | `Unknown filter field: 'secret'. Allowed fields: [name, category]`       |
-| Invalid operator for field   | `Operator 'like' is not allowed for field 'active'. Allowed: [EQ]`       |
-| Invalid operator name        | `Unknown filter operator: 'contains'. Supported: eq, neq, like, ...`     |
-| Invalid boolean value        | `Invalid boolean value: 'banana'. Use 'true' or 'false'`                 |
-| Invalid datetime value       | `Invalid value '2025-13-01' for type LocalDateTime`                      |
-| Unknown sort field           | `Unknown sort field: 'secret'. Allowed fields: [name, created]`          |
-| Invalid sort direction       | `Invalid sort direction: 'up'. Use 'asc' or 'desc'`                      |
+| Error                      | Example Message                                                      |
+|----------------------------|----------------------------------------------------------------------|
+| Unknown filter field       | `Unknown filter field: 'secret'. Allowed fields: [name, category]`   |
+| Invalid operator for field | `Operator 'like' is not allowed for field 'active'. Allowed: [EQ]`   |
+| Unknown operator           | `Unknown filter operator: 'contains'. Supported: eq, neq, like, ...` |
+| Invalid boolean value      | `Invalid boolean value: 'banana'. Use 'true' or 'false'`            |
+| Invalid datetime value     | `Invalid value '2025-13-01' for type LocalDateTime`                  |
+| Unknown sort field         | `Unknown sort field: 'secret'. Allowed fields: [name, created]`      |
+| Invalid sort direction     | `Invalid sort direction: 'up'. Use 'asc' or 'desc'`                 |
 
-These are caught by Spring's exception handling and typically mapped to **400 Bad Request**.
+To map these to HTTP 400 responses, add an exception handler in your application:
+
+```java
+@RestControllerAdvice
+public class FilterExceptionHandler {
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Mono<Map<String, String>> handleFilterError(IllegalArgumentException ex) {
+        return Mono.just(Map.of("error", ex.getMessage()));
+    }
+}
+```
 
 ## Security
 
 The library is designed to be injection-safe:
 
-- **Field whitelist** — Only fields declared in `EntityFilterSpec` can be filtered or sorted. Prevents access to sensitive fields like `password` or internal metadata.
-- **Operator whitelist** — Each field defines which operators are allowed. Boolean fields only accept `eq`, preventing nonsensical queries.
-- **Type conversion** — Values are converted to typed Java objects before being passed to MongoDB. No raw strings in queries for non-string types.
-- **Regex escaping** — The `like` operator uses `Pattern.quote()` to escape user input, preventing regex injection.
-- **No dot notation** — Field name regex `\w+` does not allow dots, preventing access to nested fields like `credentials.hash`.
-- **Parameterized queries** — Spring Data's Criteria API uses BSON encoding, not string concatenation. MongoDB operator injection (`$gt`, `$where`) is not possible.
+- **Field whitelist** -- only fields declared in `EntityFilterSpec` can be filtered or sorted
+- **Operator whitelist** -- each field defines which operators are allowed
+- **Type conversion** -- values are converted to typed Java objects before being passed to MongoDB
+- **Regex escaping** -- the `like` operator uses `Pattern.quote()` to escape user input
+- **No dot notation** -- field name regex `\w+` prevents access to nested fields like `credentials.hash`
+- **Parameterized queries** -- Spring Data's Criteria API uses BSON encoding, not string concatenation
 
-## Package Structure
+## Building from Source
 
+```bash
+git clone https://github.com/magicthings/spring-reactive-mongo-filter.git
+cd spring-reactive-mongo-filter
+./mvnw clean install
 ```
-reactivemongofilter
-├── annotation/     @Filtered
-├── config/         ReactiveMongoFilterAutoConfiguration
-├── model/          FilterCriteria, FilterOperator, FilterRequest,
-│                   FilterableField, FilteredPage, SortCriteria
-├── parser/         FilterRequestParser, FilterCriteriaBuilder
-├── repository/     ReactiveFilterRepository
-├── resolver/       FilteredArgumentResolver
-└── spec/           EntityFilterSpec
-```
+
+Requires Java 21+.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
+Contributions are welcome! Please open an [issue](https://github.com/magicthings/spring-reactive-mongo-filter/issues) or submit a [pull request](https://github.com/magicthings/spring-reactive-mongo-filter/pulls).
 
 ## License
 
