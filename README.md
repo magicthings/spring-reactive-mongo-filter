@@ -51,7 +51,7 @@ No existing library covers WebFlux + Reactive MongoDB + REST query parameter fil
 <dependency>
     <groupId>de.magicthings</groupId>
     <artifactId>spring-reactive-mongo-filter</artifactId>
-    <version><!-- latest version, see badge above --></version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
