@@ -71,9 +71,12 @@ public class FilterCriteriaBuilder {
         if (!sorts.isEmpty()) {
             Map<String, String> sortableFields = spec.getSortableFields();
             List<Sort.Order> orders = sorts.stream()
+                    .filter(sc -> sortableFields.containsKey(sc.field()))
                     .map(sc -> new Sort.Order(sc.direction(), sortableFields.get(sc.field())))
                     .toList();
-            query.with(Sort.by(orders));
+            if (!orders.isEmpty()) {
+                query.with(Sort.by(orders));
+            }
         }
     }
 
