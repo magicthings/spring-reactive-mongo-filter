@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [ main, dev, stage ]
+    branches: [ main, dev ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -23,24 +23,5 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Configure Maven settings
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml << 'EOF'
-          <settings>
-            <servers>
-              <server>
-                <id>github-magicthings-entity-library</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-          </settings>
-          EOF
-        env:
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
-
       - name: Build and Test
         run: ./mvnw clean verify
-        env:
-          GITHUB_TOKEN: ${{ secrets.PACKAGES_TOKEN }}

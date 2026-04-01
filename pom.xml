@@ -17,8 +17,32 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>magicthings. Spring Reactive Mongo Filter</name>
+    <name>Spring Reactive Mongo Filter</name>
     <description>Reusable reactive filtering, sorting, and pagination for MongoDB-based Spring WebFlux microservices</description>
+    <url>https://github.com/magicthings/spring-reactive-mongo-filter</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Timon Wegener</name>
+            <email>timon.wegener@magicthings.de</email>
+            <organization>magicthings</organization>
+            <organizationUrl>https://github.com/magicthings</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/magicthings/spring-reactive-mongo-filter.git</connection>
+        <developerConnection>scm:git:ssh://github.com:magicthings/spring-reactive-mongo-filter.git</developerConnection>
+        <url>https://github.com/magicthings/spring-reactive-mongo-filter</url>
+    </scm>
 
     <properties>
         <java.version>21</java.version>
@@ -26,14 +50,6 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-
-    <distributionManagement>
-        <repository>
-            <id>github-magicthings</id>
-            <name>GitHub Spring Reactive Mongo Filter</name>
-            <url>https://maven.pkg.github.com/magicthings/spring-reactive-mongo-filter</url>
-        </repository>
-    </distributionManagement>
 
     <dependencies>
         <!-- MongoDB Reactive (provided - Microservices supply this) -->
@@ -77,18 +93,13 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.4</version>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
                 <version>3.3.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -111,4 +122,46 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Activated during release to sign artifacts and publish to Maven Central -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
