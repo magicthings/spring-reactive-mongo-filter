@@ -1,6 +1,8 @@
 # Spring Reactive Mongo Filter
 
 [![Maven Central](https://img.shields.io/maven-central/v/de.magicthings/spring-reactive-mongo-filter)](https://central.sonatype.com/artifact/de.magicthings/spring-reactive-mongo-filter)
+[![Java 21+](https://img.shields.io/badge/Java-21%2B-blue)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot 4.x](https://img.shields.io/badge/Spring%20Boot-4.x-green)](https://spring.io/projects/spring-boot)
 
 Reusable filtering, sorting, and pagination for Spring WebFlux microservices with reactive MongoDB.
 
