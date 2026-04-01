@@ -2,7 +2,6 @@ package de.magicthings.reactivemongofilter.repository;
 
 import de.magicthings.reactivemongofilter.model.FilterRequest;
 import de.magicthings.reactivemongofilter.model.FilterableField;
-import de.magicthings.reactivemongofilter.model.FilteredPage;
 import de.magicthings.reactivemongofilter.parser.FilterCriteriaBuilder;
 import de.magicthings.reactivemongofilter.spec.EntityFilterSpec;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,7 +90,8 @@ class ReactiveFilterRepositoryTest {
                 .verifyComplete();
     }
 
-    record TestEntity(String name) {}
+    record TestEntity(String name) {
+    }
 
     static class TestSpec implements EntityFilterSpec<TestEntity> {
         @Override
