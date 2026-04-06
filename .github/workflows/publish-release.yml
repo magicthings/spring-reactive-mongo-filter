@@ -79,11 +79,18 @@ jobs:
             sha256sum "$file" > "$file.sha256"
           done
 
+      - name: Delete existing GitHub Release if present
+        if: github.ref_type == 'tag'
+        run: gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag=false 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          make_latest: true
           files: |
             target/spring-reactive-mongo-filter-*.jar
             target/spring-reactive-mongo-filter-*.jar.sha256
